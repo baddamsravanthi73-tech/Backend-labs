@@ -29,70 +29,115 @@ initializeDBAndServer()
 
 // API 1: Get all books
 app.get('/books/', async (request, response) => {
-  const getBooksQuery = `
-    SELECT *
-    FROM book;
-  `
-  const books = await db.all(getBooksQuery)
-  response.send(books)
+  try {
+    const getBooksQuery = `
+      SELECT *
+      FROM book;
+    `
+    const books = await db.all(getBooksQuery)
+    response.status(200).send(books)
+  } catch (error) {
+    response.status(500).send({error: error.message})
+  }
 })
 
 // API 2: Add a book
 app.post('/books/', async (request, response) => {
-  const {title, author, price, pages} = request.body
+  try {
+    const {title, author, price, pages} = request.body
 
-  const addBookQuery = `
-    INSERT INTO book (title, author, price, pages)
-    VALUES (?, ?, ?, ?);
-  `
+    const addBookQuery = `
+      INSERT INTO book (title, author, price, pages)
+      VALUES (?, ?, ?, ?);
+    `
 
-  await db.run(addBookQuery, [title, author, price, pages])
-  response.send('Book Added Successfully')
+    await db.run(addBookQuery, [title, author, price, pages])
+    response.status(201).send('Book Added Successfully')
+  } catch (error) {
+    response.status(500).send({error: error.message})
+  }
 })
 
 // API 3: Get a particular book
 app.get('/books/:bookId/', async (request, response) => {
-  const {bookId} = request.params
+  try {
+    const {bookId} = request.params
 
-  const getBookQuery = `
-    SELECT *
-    FROM book
-    WHERE id = ?;
-  `
+    if (isNaN(bookId)) {
+      return response.status(400).json({error: 'Invalid book ID'})
+    }
 
-  const book = await db.get(getBookQuery, [bookId])
-  response.send(book)
+    const getBookQuery = `
+      SELECT *
+      FROM book
+      WHERE id = ?;
+    `
+
+    const book = await db.get(getBookQuery, [bookId])
+    if (!book) {
+      return response.status(404).json({error: 'Book not found'})
+    }
+
+    response.status(200).send(book)
+  } catch (error) {
+    response.status(500).send({error: error.message})
+  }
 })
 
 // API 4: Update a book
 app.put('/books/:bookId/', async (request, response) => {
-  const {bookId} = request.params
-  const {title, author, price, pages} = request.body
+  try {
+    const {bookId} = request.params
 
-  const updateBookQuery = `
-    UPDATE book
-    SET title = ?,
-        author = ?,
-        price = ?,
-        pages = ?
-    WHERE id = ?;
-  `
+    if (isNaN(bookId)) {
+      return response.status(400).json({error: 'Invalid book ID'})
+    }
 
-  await db.run(updateBookQuery, [title, author, price, pages, bookId])
-  response.send('Book Details Updated')
+    const {title, author, price, pages} = request.body
+
+    const updateBookQuery = `
+      UPDATE book
+      SET title = ?,
+          author = ?,
+          price = ?,
+          pages = ?
+      WHERE id = ?;
+    `
+
+    const result = await db.run(updateBookQuery, [title, author, price, pages, bookId])
+    if (result.changes === 0) {
+      return response.status(404).json({error: 'Book not found'})
+    }
+
+    response.status(200).send('Book Details Updated')
+  } catch (error) {
+    response.status(500).send({error: error.message})
+  }
 })
 
 // API 5: Delete a book
 app.delete('/books/:bookId/', async (request, response) => {
-  const {bookId} = request.params
+  try {
+    const {bookId} = request.params
 
-  const deleteBookQuery = `
-    DELETE FROM book
-    WHERE id = ?;
-  `
+    if (isNaN(bookId)) {
+      return response.status(400).json({error: 'Invalid book ID'})
+    }
 
-  await db.run(deleteBookQuery, [bookId])
-  response.send('Book Removed')
+    const deleteBookQuery = `
+      DELETE FROM book
+      WHERE id = ?;
+    `
+
+    const result = await db.run(deleteBookQuery, [bookId])
+    if (result.changes === 0) {
+      return response.status(404).json({error: 'Book not found'})
+    }
+
+    response.status(200).send('Book Removed')
+  } catch (error) {
+    response.status(500).send({error: error.message})
+  }
 })
 
 module.exports = app
