@@ -27,21 +27,54 @@ const initializeDBAndServer = async () => {
 
 initializeDBAndServer()
 
-// API 1: Get all books
+// ==========================================
+// EXTRA: Welcome Route (API Info)
+// ==========================================
+app.get('/', (request, response) => {
+  response.status(200).send('Welcome to the Bookstore API! Visit /books/ to see all books.')
+})
+
+// ==========================================
+// API 1: Get all books (with optional search query)
+// ==========================================
 app.get('/books/', async (request, response) => {
   try {
+    const {search_q = ''} = request.query
     const getBooksQuery = `
       SELECT *
-      FROM book;
+      FROM book
+      WHERE title LIKE ?;
     `
-    const books = await db.all(getBooksQuery)
+    const books = await db.all(getBooksQuery, [`%${search_q}%`])
     response.status(200).send(books)
   } catch (error) {
     response.status(500).send({error: error.message})
   }
 })
 
+// ==========================================
+// EXTRA: Get Bookstore Summary / Statistics
+// ==========================================
+app.get('/stats/', async (request, response) => {
+  try {
+    const statsQuery = `
+      SELECT 
+        COUNT(*) AS totalBooks,
+        AVG(price) AS averagePrice,
+        MAX(price) AS highestPrice,
+        MIN(price) AS lowestPrice
+      FROM book;
+    `
+    const stats = await db.get(statsQuery)
+    response.status(200).send(stats)
+  } catch (error) {
+    response.status(500).send({error: error.message})
+  }
+})
+
+// ==========================================
 // API 2: Add a book
+// ==========================================
 app.post('/books/', async (request, response) => {
   try {
     const {title, author, price, pages} = request.body
@@ -58,7 +91,9 @@ app.post('/books/', async (request, response) => {
   }
 })
 
-// API 3: Get a particular book
+// ==========================================
+// API 3: Get a particular book by ID
+// ==========================================
 app.get('/books/:bookId/', async (request, response) => {
   try {
     const {bookId} = request.params
@@ -84,7 +119,9 @@ app.get('/books/:bookId/', async (request, response) => {
   }
 })
 
+// ==========================================
 // API 4: Update a book
+// ==========================================
 app.put('/books/:bookId/', async (request, response) => {
   try {
     const {bookId} = request.params
@@ -115,7 +152,9 @@ app.put('/books/:bookId/', async (request, response) => {
   }
 })
 
+// ==========================================
 // API 5: Delete a book
+// ==========================================
 app.delete('/books/:bookId/', async (request, response) => {
   try {
     const {bookId} = request.params
@@ -138,6 +177,13 @@ app.delete('/books/:bookId/', async (request, response) => {
   } catch (error) {
     response.status(500).send({error: error.message})
   }
+})
+
+// ==========================================
+// EXTRA: 404 Catch-All Handler
+// ==========================================
+app.use((request, response) => {
+  response.status(404).send('404 - Page Not Found')
 })
 
 module.exports = app
